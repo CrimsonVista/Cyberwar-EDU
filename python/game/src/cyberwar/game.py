@@ -363,7 +363,44 @@ class GameConsole(CLIShell):
         
     def _objControl(self, writer, *args):
         writer("Error. No sub command")
-        
+
+    def _getWaterAble(self, objectType):
+        if objectType not in self._playerObjectTypes:
+            raise Exception("No such type {}".format(objectType))
+        typeSection = self._playerObjectTypes[objectType]
+        if not ("mobile" in typeSection["attributes"]):
+            return 0
+        else:
+            return AttributeConstructor["mobile"](typeSection).waterAble()
+
+    def _newPositonAvaliable(self, writer, x, y, objectType):
+        contentsResult = self._game.send(ContentsRequest("game", x, y))
+        contents = contentsResult.Value
+        terrainType = None
+        otherObj = None
+        for obj in contents:
+            if isinstance(obj, Land):
+                terrainType = Land
+            elif isinstance(obj, Water):
+                terrainType = Water
+            elif isinstance(obj, ControlPlaneObject):
+                otherObj = obj
+        if otherObj != None:
+            writer("Target position is not avaliable. Other bots on this position.\n\n")
+            return False
+        if terrainType == Water and self._getWaterAble(objectType) == 0:
+            writer("Target position is not avaliable. {} can't place in water.\n\n".format(objectType))
+            return False
+        return True
+
+    def _newGameObjectCommand(self, writer, x, y, objectType, *objectArgs):
+        if objectType in self._playerObjectTypes:
+            if self._newPositonAvaliable(writer, x, y, objectType):
+                return self._newPlayerObjectCommand(writer, x, y, objectType, objectArgs[0], objectArgs[1:])
+        # TODO: Eventually, can have NPC's and other control plane objects.
+        # But for now, only have brain controlled stuff.
+        writer("Unknown object type {}\n".format(objectType))
+
     def _newGameObjectCommand(self, writer, x, y, objectType, *objectArgs):
         if objectType in self._playerObjectTypes:
             return self._newPlayerObjectCommand(writer, x, y, objectType, objectArgs[0], objectArgs[1:])
@@ -455,7 +492,10 @@ class GameConsole(CLIShell):
         
         gameObject = ControlPlaneObject.OBJECT_LOOKUP[objectId]
         x,y = int(x), int(y)
-        
+
+        if not self._newPositonAvaliable(writer, x, y, gameObject.objectType()):
+            return
+
         removeResponse = self._game.send(RemoveRequest("game", gameObject))
         if not removeResponse:
             writer("Could not remove {} from current location.\n\n".format(gameObject.identifier()))
