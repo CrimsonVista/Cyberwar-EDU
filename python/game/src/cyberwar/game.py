@@ -334,7 +334,7 @@ class GameConsole(CLIShell):
     
     def _createPlayerObject(self, startX, startY, objectType, brainType, *kargsList):
         kargs = {}
-        for argpair in kargsList:
+        for argpair in kargsList[0]:
             print(argpair)
             try:
                 k,v = argpair.split("=")
@@ -374,23 +374,25 @@ class GameConsole(CLIShell):
             return AttributeConstructor["mobile"](typeSection).waterAble()
 
     def _newPositonAvaliable(self, writer, x, y, objectType):
+        x, y = int(x), int(y)
         contentsResult = self._game.send(ContentsRequest("game", x, y))
         contents = contentsResult.Value
         terrainType = None
         otherObj = None
         for obj in contents:
             if isinstance(obj, Land):
-                terrainType = Land
+                terrainType = "land"
             elif isinstance(obj, Water):
-                terrainType = Water
+                terrainType = "water"
             elif isinstance(obj, ControlPlaneObject):
                 otherObj = obj
         if otherObj != None:
             writer("Target position is not avaliable. Other bots on this position.\n\n")
             return False
-        if terrainType == Water and self._getWaterAble(objectType) == 0:
+        if terrainType == "water" and self._getWaterAble(objectType) == 0:
             writer("Target position is not avaliable. {} can't place in water.\n\n".format(objectType))
             return False
+        # TODO: Add case that return false if the bot is water only and want to place on land.
         return True
 
     def _newGameObjectCommand(self, writer, x, y, objectType, *objectArgs):
