@@ -25,6 +25,7 @@ from .braininterface.Layer import Layer as BrainControlLayer
 from .braininterface.Layer import CreateBrainControlledObjectRequest, GetBrainObjectByIdentifier
 
 import sqlite3, asyncio, os, configparser, time, shutil
+import pickle
 
 Command = CLIShell.CommandHandler
 Loaders = [TerrainLoader, BrainObjectLoader]
@@ -137,6 +138,7 @@ class GameConsole(CLIShell):
         
         self._DefinedTypes = {}
         self._objIdToBrain = {}
+        self._objIdToType = {}
         
         newgameCommandHandler = Command("newgame",
                                         "Create a new game (erase any existing game data!)",
@@ -211,6 +213,13 @@ class GameConsole(CLIShell):
         self._objectStore and self._objectStore.commit()
         # then we commit the database to file
         self._db and self._db.commit()
+        # Save the map.
+        try:
+            with open(self.saveFile, 'wb') as f:
+                pickle.dump(self._objIdToType, f)
+        except IOError:
+            print("Exception while saving to map file.")
+        f.close()
         
     def autosave(self):
         self.saveGame()
@@ -234,6 +243,12 @@ class GameConsole(CLIShell):
                         Board(self._db, store))))
         
         self._game.send(StartGameRequest("game"))
+        try:
+            with open(self.saveFile, 'rb') as f:
+                self._objIdToType = pickle.load(f)
+        except IOError:
+            print("Exception while reading map file.")
+        f.close()
 
         
     def _newGame(self, maxX, maxY):
@@ -355,6 +370,7 @@ class GameConsole(CLIShell):
         if not r:
             raise Exception(r.Value)
         newObject = r.Value
+        self._objIdToType[newObject.numericIdentifier()] = objectType
         #self._objIdToBrain[newObject.numericIdentifier()] = brainPath
             
         r = self._game.send(PutRequest("game", startX, startY, newObject))
@@ -488,7 +504,7 @@ class GameConsole(CLIShell):
         gameObject = ControlPlaneObject.OBJECT_LOOKUP[objectId]
         x,y = int(x), int(y)
 
-        if not self._newPositonAvaliable(writer, x, y, gameObject.objectType()):
+        if not self._newPositonAvaliable(writer, x, y, self._objIdToType[gameObject.numericIdentifier()]):
             return
 
         removeResponse = self._game.send(RemoveRequest("game", gameObject))
