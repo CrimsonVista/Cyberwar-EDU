@@ -25,7 +25,6 @@ from .braininterface.Layer import Layer as BrainControlLayer
 from .braininterface.Layer import CreateBrainControlledObjectRequest, GetBrainObjectByIdentifier
 
 import sqlite3, asyncio, os, configparser, time, shutil
-import pickle
 
 Command = CLIShell.CommandHandler
 Loaders = [TerrainLoader, BrainObjectLoader]
@@ -138,7 +137,6 @@ class GameConsole(CLIShell):
         
         self._DefinedTypes = {}
         self._objIdToBrain = {}
-        self._objIdToType = {}
         
         newgameCommandHandler = Command("newgame",
                                         "Create a new game (erase any existing game data!)",
@@ -214,12 +212,6 @@ class GameConsole(CLIShell):
         # then we commit the database to file
         self._db and self._db.commit()
         # Save the map.
-        try:
-            with open(self.saveFile, 'wb') as f:
-                pickle.dump(self._objIdToType, f)
-        except IOError:
-            print("Exception while saving to map file.")
-        f.close()
         
     def autosave(self):
         self.saveGame()
@@ -243,13 +235,6 @@ class GameConsole(CLIShell):
                         Board(self._db, store))))
         
         self._game.send(StartGameRequest("game"))
-        try:
-            with open(self.saveFile, 'rb') as f:
-                self._objIdToType = pickle.load(f)
-        except IOError:
-            print("Exception while reading map file.")
-        f.close()
-
         
     def _newGame(self, maxX, maxY):
         if self._gameGenerating:
@@ -370,7 +355,6 @@ class GameConsole(CLIShell):
         if not r:
             raise Exception(r.Value)
         newObject = r.Value
-        self._objIdToType[newObject.numericIdentifier()] = objectType
         #self._objIdToBrain[newObject.numericIdentifier()] = brainPath
             
         r = self._game.send(PutRequest("game", startX, startY, newObject))
@@ -380,14 +364,19 @@ class GameConsole(CLIShell):
     def _objControl(self, writer, *args):
         writer("Error. No sub command")
 
-    def _getWaterAble(self, objectType):
-        if objectType not in self._playerObjectTypes:
-            raise Exception("No such type {}".format(objectType))
-        typeSection = self._playerObjectTypes[objectType]
-        if not ("mobile" in typeSection["attributes"]):
-            return 0
+    def _getWaterAble(self, obj):
+        if isinstance(obj, ControlPlaneObject):
+            mobile = obj.getAttribute(Mobile)
+            if mobile == None:
+                return 0
+            else:
+                return mobile.waterAble()
         else:
-            return AttributeConstructor["mobile"](typeSection).waterAble()
+            typeSection = self._playerObjectTypes[obj]
+            if not ("mobile" in typeSection["attributes"]):
+                return 0
+            else:
+                return AttributeConstructor["mobile"](typeSection).waterAble()
 
     def _newPositonAvaliable(self, writer, x, y, objectType):
         x, y = int(x), int(y)
@@ -406,7 +395,7 @@ class GameConsole(CLIShell):
             writer("Target position is not avaliable. Other bots on this position.\n\n")
             return False
         if terrainType == "water" and self._getWaterAble(objectType) == 0:
-            writer("Target position is not avaliable. {} can't place in water.\n\n".format(objectType))
+            writer("Target position is not avaliable. Target can't place in water.\n\n")
             return False
         # TODO: Add case that return false if the bot is water only and want to place on land.
         return True
@@ -504,7 +493,7 @@ class GameConsole(CLIShell):
         gameObject = ControlPlaneObject.OBJECT_LOOKUP[objectId]
         x,y = int(x), int(y)
 
-        if not self._newPositonAvaliable(writer, x, y, self._objIdToType[gameObject.numericIdentifier()]):
+        if not self._newPositonAvaliable(writer, x, y, gameObject):
             return
 
         removeResponse = self._game.send(RemoveRequest("game", gameObject))
