@@ -211,7 +211,6 @@ class GameConsole(CLIShell):
         self._objectStore and self._objectStore.commit()
         # then we commit the database to file
         self._db and self._db.commit()
-        # Save the map.
         
     def autosave(self):
         self.saveGame()
