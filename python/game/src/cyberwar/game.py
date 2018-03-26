@@ -235,7 +235,6 @@ class GameConsole(CLIShell):
                         Board(self._db, store))))
         
         self._game.send(StartGameRequest("game"))
-
         
     def _newGame(self, maxX, maxY):
         if self._gameGenerating:
@@ -335,7 +334,7 @@ class GameConsole(CLIShell):
     
     def _createPlayerObject(self, startX, startY, objectType, brainType, *kargsList):
         kargs = {}
-        for argpair in kargsList:
+        for argpair in kargsList[0]:
             print(argpair)
             try:
                 k,v = argpair.split("=")
@@ -364,10 +363,47 @@ class GameConsole(CLIShell):
         
     def _objControl(self, writer, *args):
         writer("Error. No sub command")
-        
+
+    def _getWaterAble(self, obj):
+        if isinstance(obj, ControlPlaneObject):
+            mobile = obj.getAttribute(Mobile)
+            if mobile == None:
+                return 0
+            else:
+                return mobile.waterAble()
+        else:
+            typeSection = self._playerObjectTypes[obj]
+            if not ("mobile" in typeSection["attributes"]):
+                return 0
+            else:
+                return AttributeConstructor["mobile"](typeSection).waterAble()
+
+    def _newPositonAvaliable(self, writer, x, y, objectType):
+        x, y = int(x), int(y)
+        contentsResult = self._game.send(ContentsRequest("game", x, y))
+        contents = contentsResult.Value
+        terrainType = None
+        otherObj = None
+        for obj in contents:
+            if isinstance(obj, Land):
+                terrainType = "land"
+            elif isinstance(obj, Water):
+                terrainType = "water"
+            elif isinstance(obj, ControlPlaneObject):
+                otherObj = obj
+        if otherObj != None:
+            writer("Target position is not avaliable. Other bots on this position.\n\n")
+            return False
+        if terrainType == "water" and self._getWaterAble(objectType) == 0:
+            writer("Target position is not avaliable. Target can't place in water.\n\n")
+            return False
+        # TODO: Add case that return false if the bot is water only and want to place on land.
+        return True
+
     def _newGameObjectCommand(self, writer, x, y, objectType, *objectArgs):
         if objectType in self._playerObjectTypes:
-            return self._newPlayerObjectCommand(writer, x, y, objectType, objectArgs[0], objectArgs[1:])
+            if self._newPositonAvaliable(writer, x, y, objectType):
+                return self._newPlayerObjectCommand(writer, x, y, objectType, objectArgs[0], objectArgs[1:])
         # TODO: Eventually, can have NPC's and other control plane objects.
         # But for now, only have brain controlled stuff.
         writer("Unknown object type {}\n".format(objectType))
@@ -456,7 +492,10 @@ class GameConsole(CLIShell):
         
         gameObject = ControlPlaneObject.OBJECT_LOOKUP[objectId]
         x,y = int(x), int(y)
-        
+
+        if not self._newPositonAvaliable(writer, x, y, gameObject):
+            return
+
         removeResponse = self._game.send(RemoveRequest("game", gameObject))
         if not removeResponse:
             writer("Could not remove {} from current location.\n\n".format(gameObject.identifier()))
