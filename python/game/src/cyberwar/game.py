@@ -333,7 +333,7 @@ class GameConsole(CLIShell):
     
     def _createPlayerObject(self, startX, startY, objectType, brainType, *kargsList):
         kargs = {}
-        for argpair in kargsList[0]:
+        for argpair in kargsList:
             print(argpair)
             try:
                 k,v = argpair.split("=")
@@ -402,7 +402,7 @@ class GameConsole(CLIShell):
     def _newGameObjectCommand(self, writer, x, y, objectType, *objectArgs):
         if objectType in self._playerObjectTypes:
             if self._newPositonAvaliable(writer, x, y, objectType):
-                return self._newPlayerObjectCommand(writer, x, y, objectType, objectArgs[0], objectArgs[1:])
+                return self._newPlayerObjectCommand(writer, x, y, objectType, objectArgs[0], *objectArgs[1:])
         # TODO: Eventually, can have NPC's and other control plane objects.
         # But for now, only have brain controlled stuff.
         writer("Unknown object type {}\n".format(objectType))
