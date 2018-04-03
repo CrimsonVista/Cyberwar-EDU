@@ -4,14 +4,14 @@ from .translations import MobileAttributeInterface, ObserverAttributeInterface
 from .translations import BrainConnectInterface, BrainConnectResponse
 from .translations import FailureResponse, ResultResponse
 from .translations import MoveCompleteEvent, ScanResponse, ObjectMoveEvent
-from .translations import TangibleAttributeInterface, DamageEvent, StatusCommand, StatusResponse
+from .translations import TangibleAttributeInterface, DamageEvent, StatusCommand, StatusResponse, DamageByMinesEvent
 from .translations import NetworkTranslator
 
 from ..controlplane.objectdefinitions import Mobile, Observer, Tangible, NamedObject
 from ..controlplane.Directions import Directions
 from ..controlplane.objectdefinitions import ControlPlaneObject
 from ..controlplane.Layer import ObjectMoveRequest, ObjectScanRequest
-from ..controlplane.Layer import ObjectMoveCompleteEvent, ObjectScanResult, ObjectDamagedEvent
+from ..controlplane.Layer import ObjectMoveCompleteEvent, ObjectScanResult, ObjectDamagedEvent, ObjectDamagedByMinesEvent
 
 from ..terrain.types import BaseType as BaseTerrainType
 
@@ -132,5 +132,14 @@ class ObjectDamageTranslator:
         return DamageEvent(message.TargetObject.identifier(),
                                   message.Damage, message.TargetDamage,
                                   message.Message)
+
+# ----------------------- newly added ----------------------------------
+class ObjectDamageByMinesTranslator:
+    @classmethod
+    def Translate(cls, message):
+        return DamageByMinesEvent(message.Damage,
+                                  message.Message)
+        
 TangibleAttributeInterface.COMMANDS=[ControlPlaneStatusCommand]
 GameMessageToNetworkMessage[ObjectDamagedEvent] = ObjectDamageTranslator
+GameMessageToNetworkMessage[ObjectDamagedByMinesEvent] = ObjectDamageByMinesTranslator

@@ -129,6 +129,7 @@ class BrainControlledObjectLoader(PickleLoader):
         object = pickle.loads(objData)
         ControlPlaneObject.OBJECT_ID = max(object.numericIdentifier(), ControlPlaneObject.OBJECT_ID)
         brainAttr = object.getAttribute(BrainEnabled)
+        #print("brainAttr-----------------------------",brainAttr, brainAttr.brainIdentifier())
         
         self.BRAINID_TO_OBJECT[brainAttr.brainIdentifier()] = object
         ControlPlaneObject.OBJECT_LOOKUP[object.numericIdentifier()] = object

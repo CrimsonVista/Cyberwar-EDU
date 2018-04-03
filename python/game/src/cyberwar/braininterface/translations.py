@@ -288,6 +288,95 @@ class BrainConnectInterface:
     EVENTS = []
 NetworkTranslator.RegisterAttributeInterface(BrainConnectInterface)
 
+#--------------------------------- Start Moving ---------------------------------
+
+class AutoCommand:
+    CMD = b"auto"
+    @classmethod
+    def Marshall(cls, cmd):
+        start_x = cmd.s_x.encode()
+        start_y = cmd.s_y.encode()
+        message = b"CMD auto braininterface/1.0\n"
+        message += b"start_x:" + start_x + b"\n"   
+        message += b"start_y:" + start_y + b"\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"
+        return message
+    
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        return cls(headers[b"start_x"].decode(), 
+                   headers[b"start_y"].decode())
+
+    def __init__(self, start_x, start_y):
+        self.s_x = start_x
+        self.s_y = start_y
+
+class StartCommand:
+    CMD = b"start"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        start_x = cmd.s_x.encode()
+        start_y = cmd.s_y.encode()
+        end_x = cmd.e_x.encode()
+        end_y = cmd.e_y.encode()
+        message = b"CMD start braininterface/1.0\n"
+        message += b"start_x:" + start_x + b"\n"   
+        message += b"start_y:" + start_y + b"\n"
+        message += b"end_x:" + end_x + b"\n"
+        message += b"end_y:" + end_y + b"\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"
+        return message
+    
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        return cls(headers[b"start_x"].decode(), 
+                   headers[b"start_y"].decode(),
+                   headers[b"end_x"].decode(),
+                   headers[b"end_y"].decode())
+
+    def __init__(self, start_x, start_y, end_x, end_y):
+        self.s_x = start_x
+        self.s_y = start_y
+        self.e_x = end_x
+        self.e_y = end_y
+
+class ContinueCommand:
+    CMD = b"continue"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        message = b"CMD continue braininterface/1.0\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"
+        return message
+    
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        return cls()
+
+
+class StopCommand:
+    CMD = b"stop"
+
+    @classmethod
+    def Marshall(cls, cmd):
+        message = b"CMD stop braininterface/1.0\n"
+        message += b"Content_length: 0\n"
+        message += b"\n"
+        return message
+    
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        return cls()
+
+#----------------------------------------------------------------------------------
+
+
+
+
 class MoveCommand:
     CMD = b"move"
     
@@ -333,7 +422,7 @@ class MoveCompleteEvent:
         
 class MobileAttributeInterface:
     ATTRIBUTE_NAME = "mobile"
-    COMMANDS = [MoveCommand]
+    COMMANDS = [MoveCommand,StartCommand,StopCommand,AutoCommand,ContinueCommand]
     EVENTS = [MoveCompleteEvent]
     RESPONSES = []
 NetworkTranslator.RegisterAttributeInterface(MobileAttributeInterface)
@@ -469,9 +558,34 @@ class DamageEvent:
         self.targetDamage = targetDamage
         self.message = message
 
+# Handle event of damage by landmines
+class DamageByMinesEvent:
+    EVENT = b"damage_by_landmines"
+
+    @classmethod
+    def Marshall(cls, event):
+        body = pickle.dumps((event.damage,
+                             event.message))
+        bodyLength = str(len(body))
+        message = b"EVENT damage_by_landmines braininterface/1.0\n"
+        message += b"Content_length: " + bodyLength.encode() + b"\n"
+        message += b"\n"
+        message += body
+        return message
+    
+    @classmethod
+    def Unmarshall(cls, headers, body):
+        damage, message = pickle.loads(body)
+        return cls(damage,
+                   message)
+        
+    def __init__(self, damage, message):
+        self.damage = damage
+        self.message = message
+
 class TangibleAttributeInterface:
     ATTRIBUTE_NAME='tangible'
     COMMANDS = [StatusCommand]
     RESPONSES= [StatusResponse]
-    EVENTS   = [DamageEvent]
+    EVENTS   = [DamageEvent, DamageByMinesEvent]
 NetworkTranslator.RegisterAttributeInterface(TangibleAttributeInterface)

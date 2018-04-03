@@ -45,6 +45,14 @@ class ObjectDamagedEvent(Event):
                          Object=object, TargetObject=targetObject,
                          Damage=damage, TargetDamage=targetDamage,
                          Message=message)
+
+# ---------- landmines damage event ---------------
+class ObjectDamagedByMinesEvent(Event):
+    def __init__(self, receiver, object, damage, message):
+        super().__init__(ControlLayer.LAYER_NAME, receiver,
+                         Object = object, Damage = damage,
+                         Message = message)
+# -------------------------------------------------
         
 class ObjectObservationEvent(Event):
     """This event is when a specific object
@@ -186,7 +194,9 @@ class ControlLayer(LayerBase):
 
                     # my add end
         
-
+        # objectLocation = result.Value
+        # newLocation = request.Direction.getSquare(objectLocation)
+        
         
         # if we're tangible, check for collisions:
         myTangibleAttr = request.Object.getAttribute(Tangible) 
@@ -212,50 +222,72 @@ class ControlLayer(LayerBase):
                     if objectTangibleAttr:
                         # Two tangible objects in the same space. Collision
                         # for now, damge is 10% of hit points. Later, adjust by speed
-                        maxMyDamage = int(objectTangibleAttr.hitpoints()/10)
-                        maxObjectDamage = int(myTangibleAttr.hitpoints()/10)
-                        
-                        if maxMyDamage > 0:
-                            myDamage = random.randint(1, maxMyDamage)
-                            myTangibleAttr.takeDamage(myDamage)
-                        else:
-                            myDamage = 0
-                            
-                        if maxObjectDamage > 0:
-                            objectDamage = random.randint(1, maxObjectDamage)
-                            objectTangibleAttr.takeDamage(objectDamage)
-                        else:
-                            objectDamage = 0
-                        
-                        if objectTangibleAttr.hitpoints() == 0:
+
+                        # Check for mines
+                        if objectTangibleAttr.landmine() == 1:
+                            damageByMine = random.randint(2, 5)
+                            myTangibleAttr.takeDamage(damageByMine)
+                            objectTangibleAttr.takeDamage(damageByMine)
+
+                            if myTangibleAttr.hitpoints() == 0:
+                                self._lowerLayer.send(ReleaseObjectRequest(self.LAYER_NAME,
+                                                                           request.Object))
+
                             self._lowerLayer.send(ReleaseObjectRequest(self.LAYER_NAME,
                                                                        object))
-                        if myTangibleAttr.hitpoints() == 0:
-                            self._lowerLayer.send(ReleaseObjectRequest(self.LAYER_NAME,
-                                                                       request.Object))
-                        
-                        if self._upperLayer:
-                            objectName = object.identifier()
-                            myName = request.Object.identifier()
-                            
-                            # Don't know whom should receive the damage report.
-                            # BROADCAST
-                            
-                            self._upperLayer.receive(ObjectDamagedEvent(Event.BROADCAST,
-                                                                        object, request.Object, 
-                                                                        objectDamage, myDamage,
-                                                                        "Collision with {}".format(myName))
-                                                                        )
-                            self._upperLayer.receive(ObjectDamagedEvent(Event.BROADCAST,
-                                                                        request.Object, object,
-                                                                        myDamage, objectDamage,
-                                                                        "Collision with {}".format(objectName))
-                                                                        )
-                            self._upperLayer.receive(ObjectMoveCompleteEvent(request.sender(),
-                                                                             request.Object,
-                                                                             objectLocation,
-                                                                             "Movement failed because of collision"))
-                            return
+                            if self._upperLayer:
+
+                                self._upperLayer.receive(ObjectDamagedByMinesEvent(Event.BROADCAST,
+                                                                            request.Object,
+                                                                            damageByMine,
+                                                                            "Landmines encountered."))
+                            break
+
+                        else:
+                            maxMyDamage = int(objectTangibleAttr.hitpoints()/10)
+                            maxObjectDamage = int(myTangibleAttr.hitpoints()/10)
+
+                            if maxMyDamage > 0:
+                                myDamage = random.randint(1, maxMyDamage)
+                                myTangibleAttr.takeDamage(myDamage)
+                            else:
+                                myDamage = 0
+
+                            if maxObjectDamage > 0:
+                                objectDamage = random.randint(1, maxObjectDamage)
+                                objectTangibleAttr.takeDamage(objectDamage)
+                            else:
+                                objectDamage = 0
+
+                            if objectTangibleAttr.hitpoints() == 0:
+                                self._lowerLayer.send(ReleaseObjectRequest(self.LAYER_NAME,
+                                                                           object))
+                            if myTangibleAttr.hitpoints() == 0:
+                                self._lowerLayer.send(ReleaseObjectRequest(self.LAYER_NAME,
+                                                                           request.Object))
+
+                            if self._upperLayer:
+                                objectName = object.identifier()
+                                myName = request.Object.identifier()
+
+                                # Don't know whom should receive the damage report.
+                                # BROADCAST
+
+                                self._upperLayer.receive(ObjectDamagedEvent(Event.BROADCAST,
+                                                                            object, request.Object,
+                                                                            objectDamage, myDamage,
+                                                                            "Collision with {}".format(myName))
+                                                                            )
+                                self._upperLayer.receive(ObjectDamagedEvent(Event.BROADCAST,
+                                                                            request.Object, object,
+                                                                            myDamage, objectDamage,
+                                                                            "Collision with {}".format(objectName))
+                                                                            )
+                                self._upperLayer.receive(ObjectMoveCompleteEvent(request.sender(),
+                                                                                 request.Object,
+                                                                                 objectLocation,
+                                                                                 "Movement failed because of collision"))
+                                return
         # move object
         moveResult = self._lowerLayer.send(PutRequest(self.LAYER_NAME,
                                                       newLocation[0],

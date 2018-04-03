@@ -68,6 +68,7 @@ class RemoteConsole(CLIShell):
         self._protocolId = 0
         self._selected = None
         self._protocols = {}
+        self.map = [['x' for i in range(100)] for i in range(100)]
 
         switchobjectHandler = Command("switch",
                                       "Switch object to control",
@@ -84,6 +85,9 @@ class RemoteConsole(CLIShell):
         downloadBrainHandler= Command("download_brain",
                                       "download the bot's current brain as a tar ball.",
                                       self._downloadBrainCommand)
+        printmapHandler     = Command("printmap",
+                                      "print current collected map.",
+                                      self._printmap)
         self.registerCommand(switchobjectHandler)
         self.registerCommand(sendcommandHandler)
         self.registerCommand(listobjectsHandler)
@@ -108,10 +112,10 @@ class RemoteConsole(CLIShell):
         self.transport.write("Network Failure: {}\n\n".format(e))
 
     def createObjectDisplay(self, objectData, indent=""):
-        s = ""
-        for key, value in objectData:
-            s += "{}{}: {}\n".format(indent, key, value)
-        return s
+       s = ""
+       for key, value in objectData:
+           s += "{}{}: {}\n".format(indent, key, value)
+       return s 
 
     def createScanResultsDisplay(self, scanResults):
         mapPart = ""
@@ -139,6 +143,12 @@ class RemoteConsole(CLIShell):
                 mapLine += "#"
             elif terrain == "water":
                 mapLine += "="
+            if self.map[99-y][x] == 'x':
+                if terrain == "land":
+                    self.map[99-y][x] = '#'                   # may need to be revised for different map
+                elif terrain == "water":
+                    self.map[99-y][x] = '='
+
 
         mapPart = mapLine + "\n" + mapPart + "\n"
         return mapPart + textPart + "\n"
@@ -174,6 +184,10 @@ class RemoteConsole(CLIShell):
             self.transport.write("{} status:\n{}\n".format(protocol.identifier, self.createObjectDisplay(data.data, indent="\t")))
         elif isinstance(data, translations.DamageEvent):
             self.transport.write("{} hit {} for {} points of damage (took {} points of damage). {}".format(protocol.identifier, data.targetObjectIdentifier, data.targetDamage, data.damage, data.message))
+        # Damage by landmines. Newly added
+        elif isinstance(data, translations.DamageByMinesEvent):
+            self.transport.write("{} attacked by landmines. Lost {} hitpoints. {}".format(protocol.identifier, data.damage, data.message))
+        # -------------------------------
         elif isinstance(data, translations.ReprogramResponse):
             self.transport.write("Reprogram of {} {}. {}\n\n".format(data.path, (data.success and "successful" or "unsuccessful"), data.message))
         elif isinstance(data, translations.DownloadBrainResponse):
@@ -257,6 +271,20 @@ class RemoteConsole(CLIShell):
             writer("Reprogram command send.\n\n")
         else:
             writer("Cancelled\n\n")
+
+    def _printmap(self,writer):
+        map_string = ""
+        map_line = ""
+        for line in self.map:
+            map_line += "".join(line)
+            map_line += "\n"
+            map_string += map_line
+            map_line = ""
+
+
+        writer("Current Explored Map:\n")
+        writer(map_string)
+        return
         
 
     def _sendCommand(self, writer, cmd, *args):
@@ -291,6 +319,46 @@ class RemoteConsole(CLIShell):
             writer("Move Message Sent.\n\n")
         elif cmd == "status":
             protocol.transport.write(protocol.translator.marshallToNetwork(translations.StatusCommand()))
+         #---------------------------- SELF AMENDMENT ----------------------------
+        elif cmd == "start" :
+            if len(args) != 4:
+                writer("Require start coordination and end coordination!\n\n")
+                return
+            start_x = args[0]
+            start_y = args[1]
+            end_x = args[2]
+            end_y = args[3]
+            cmdObj = translations.StartCommand(start_x,start_y,end_x,end_y)
+            sendData = protocol.translator.marshallToNetwork(cmdObj)
+            protocol.transport.write(sendData)
+            writer(str(sendData))
+            writer("\n\nThe bot is starting movement. \n\n")
+            return
+
+        elif cmd == "stop" :
+            cmdObj = translations.StopCommand()
+            sendData = protocol.translator.marshallToNetwork(cmdObj)
+            protocol.transport.write(sendData)
+            writer(str(sendData))
+            writer("\n\nThe bot stop movement. \n\n")
+            return
+        elif cmd == "continue" :
+            cmdObj = translations.ContinueCommand()
+            sendData = protocol.translator.marshallToNetwork(cmdObj)
+            protocol.transport.write(sendData)
+            writer(str(sendData))
+            writer("\n\nThe bot continue auto. \n\n")
+        elif cmd == "auto" :
+            if len(args) != 2:
+                writer("Require start coordination!\n\n")
+                return
+            start_x = args[0]
+            start_y = args[1]
+            cmdObj = translations.AutoCommand(start_x, start_y)
+            sendData = protocol.translator.marshallToNetwork(cmdObj)
+            protocol.transport.write(sendData)
+            writer("\n\nAuto mod Start.\n\n")
+        #------------------------------------------------------------------------
         else:
             writer("Unknown Command {}\n\n".format(cmd))
 
