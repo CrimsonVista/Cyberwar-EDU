@@ -10,7 +10,7 @@ from ..core.Layer import Layer as LayerBase
 
 from ..controlplane.objectdefinitions import ControlPlaneObject
 from ..controlplane.Layer import ObjectObservationEvent, ObjectMoveCompleteEvent
-from ..controlplane.Layer import ObjectDamagedEvent
+from ..controlplane.Layer import ObjectDamagedEvent, ObjectDamagedByMinesEvent
 
 from .connection import BrainConnectionProtocol
 from .Loader import Loader, BrainEnabled
@@ -104,7 +104,9 @@ class BrainInterfaceLayer(LayerBase):
         elif isinstance(event, ObjectObservationEvent):
             observer = event.Object
             BrainConnectionProtocol.HandleEvent(observer, event.Event)
-            
-        elif isinstance(event, ObjectMoveCompleteEvent) or isinstance(event, ObjectDamagedEvent):
+  
+   # ------------------ Newly Added (ObjectDamagedByMines) -------------------------          
+        elif isinstance(event, ObjectMoveCompleteEvent) or isinstance(event, ObjectDamagedEvent) or isinstance(event, ObjectDamagedByMinesEvent):
+        #elif isinstance(event, ObjectMoveCompleteEvent) or isinstance(event, ObjectDamagedEvent):
             BrainConnectionProtocol.HandleEvent(event.Object, event)
 Layer = BrainInterfaceLayer

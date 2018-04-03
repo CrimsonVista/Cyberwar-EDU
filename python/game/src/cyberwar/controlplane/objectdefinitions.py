@@ -98,13 +98,15 @@ class NamedObject(ControlPlaneObjectAttribute):
         return "Named({})".format(self._name)
 
 class Tangible(ControlPlaneObjectAttribute):
-    def __init__(self, hp):
+    def __init__(self, hp, landmine):
         super().__init__("tangible")
         self._maxHitpoints = hp
         self._hitpoints = hp
+        self._landmine = landmine
         
     def maxHitpoints(self): return self._maxHitpoints
     def hitpoints(self): return self._hitpoints
+    def landmine(self): return self._landmine
         
     def takeDamage(self, hp):
         self._hitpoints = max(0, self._hitpoints - hp)
@@ -134,8 +136,7 @@ class Mobile(ControlPlaneObjectAttribute):
             raise Exception("{} is not a valid heading (direction).".format(heading))
         self._heading = heading
         self._squaresPerSecond = squaresPerSecond
-        self._waterAble = waterAble
-
+        
     def heading(self): return self._heading
 
     def waterAble(self): return self._waterAble

@@ -93,7 +93,7 @@ class BrainConnectionProtocol(asyncio.Protocol):
                     
             
                 try:
-                    #print("Try to get cmd")
+                    #print("Try to get cmd!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11")
                     cmd = self.translator.unmarshallFromNetwork(headerType, headerArg, headers, body)
                     if self.object is None:
                         # FIRST CMD MUST BE CONNECT!

@@ -24,10 +24,14 @@ from .braininterface.Loader import BrainEnabled
 from .braininterface.Layer import Layer as BrainControlLayer
 from .braininterface.Layer import CreateBrainControlledObjectRequest, GetBrainObjectByIdentifier
 
-import sqlite3, asyncio, os, configparser, time, shutil
+from .dumb.Loader import Loader as DumbObjectLoader
+from .dumb.Layer import Layer as DumbObjectControlLayer
+from .dumb.Layer import CreateDumbObjectRequest
+
+import sqlite3, asyncio, os, configparser, time, shutil, random
 
 Command = CLIShell.CommandHandler
-Loaders = [TerrainLoader, BrainObjectLoader]
+Loaders = [TerrainLoader, BrainObjectLoader, DumbObjectLoader]
 
 AttributeConstructor = {
     
@@ -35,7 +39,8 @@ AttributeConstructor = {
     "mobile"  : lambda section: Mobile(heading=Directions.N, 
                                        squaresPerSecond = section.getfloat("mobile.squares_per_second"),
                                        waterAble=section.getint("mobile.water_able")),
-    "tangible": lambda section: Tangible(hp = section.getint("tangible.hp"))
+    "tangible": lambda section: Tangible(hp = section.getint("tangible.hp"),
+                                         landmine = section.getint("tangible.landmine"))
     }
 
 BRAIN_REQUIRED_FILES = ["translations.py"]
@@ -183,6 +188,9 @@ class GameConsole(CLIShell):
         self._templatesPath = os.path.join(self._gamepath, "templates")
         self._brainTemplatesPath = os.path.join(self._templatesPath, "brains")
         self._brainsPath = os.path.join(self._gamepath, "brains")
+        #-------Newly Added--------
+        self._dumbObjectPath = os.path.join(self._gamepath, "dumbObject")
+        #--------------------------
         self._dbFile = os.path.join(self._gamepath, "board.db")
         loadGame = os.path.exists(self._dbFile)
         self._db = sqlite3.connect(self._dbFile, isolation_level=None)
@@ -200,6 +208,7 @@ class GameConsole(CLIShell):
         not os.path.exists(self._templatesPath) and os.mkdir(self._templatesPath)
         not os.path.exists(self._brainTemplatesPath) and os.mkdir(self._brainTemplatesPath)
         not os.path.exists(self._brainsPath) and os.mkdir(self._brainsPath)
+        not os.path.exists(self._dumbObjectPath) and os.mkdir(self._dumbObjectPath)
         
         self._playerObjectTypes = configparser.ConfigParser()
         if os.path.exists(self._objectTypesFile):
@@ -226,13 +235,16 @@ class GameConsole(CLIShell):
         store = ObjectStore(self._db)
         store.registerLoader(BrainObjectLoader.OBJECT_TYPE, BrainObjectLoader())
         store.registerLoader(TerrainLoader.OBJECT_TYPE, TerrainLoader())
+        store.registerLoader(DumbObjectLoader.OBJECT_TYPE, DumbObjectLoader())
         store.initialize()
         self._objectStore = store
         
+        # ---- Modified --------
         self._game = BrainControlLayer(
+                DumbObjectControlLayer(
                 ControlPlaneLayer(
                     TerrainLayer(
-                        Board(self._db, store))))
+                        Board(self._db, store)))))
         
         self._game.send(StartGameRequest("game"))
 
@@ -258,6 +270,14 @@ class GameConsole(CLIShell):
         if not r:
             raise Exception(r.Value)
         end = time.time()
+
+        # ------ test --------
+        for _ in range(500):
+            x = random.randint(0,99)
+            y = random.randint(0,99)
+            self._createDumbObject(x,y,"landmine")
+        # -----end of test ----
+
         print("init in {} seconds".format(end-start))
         """
         
@@ -348,6 +368,8 @@ class GameConsole(CLIShell):
         
         print("get attributes")
         attributes = self._getObjectTypeAttributes(objectType)
+        for attr in attributes:
+            print(attr)
         print("got", attributes)
         r = self._game.send(CreateBrainControlledObjectRequest("game",
                                                               brainPath,
@@ -361,7 +383,22 @@ class GameConsole(CLIShell):
         r = self._game.send(PutRequest("game", startX, startY, newObject))
         if not r:
             raise Exception(r.Value)
-        
+
+    # --------------------- Create DumbObject -------------------
+    def _createDumbObject(self, startX, startY, objectType):
+        attributes = self._getObjectTypeAttributes(objectType)
+        r = self._game.send(CreateDumbObjectRequest("game",
+                                                    *attributes
+                                                    ))
+
+        if not r:
+            raise Exception(r.Value)
+        newObject = r.Value
+        r = self._game.send(PutRequest("game", startX, startY, newObject))
+        if not r:
+            raise Exception(r.Value)
+    # --------------------- Newly Added End ---------------------
+
     def _objControl(self, writer, *args):
         writer("Error. No sub command")
         
@@ -438,7 +475,11 @@ class GameConsole(CLIShell):
                     elif isinstance(obj, Water): terrainType=Water
                     elif isinstance(obj, ControlPlaneObject): otherObj=obj
                 if otherObj is not None:
-                    symbol = "O"
+                    attr = otherObj.getAttribute(Tangible)
+                    if attr.landmine() == 1:
+                        symbol = "#"
+                    else:
+                        symbol = "O"
                 elif terrainType == Land:
                     symbol = "#"
                 elif terrainType == Water:
