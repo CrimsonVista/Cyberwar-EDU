@@ -191,7 +191,7 @@ class ControlLayer(LayerBase):
     def _handleEvent(self, event):
         if isinstance(event, ChangeContentsEvent):
             if event.Operation == ChangeContentsEvent.INSERT:
-                if event.Object.getAttribute(Tangible) and event.Object.getAttribute(Tangible).hitpoints() == 0:
+                if isinstance(event.Object, ControlPlaneObject) and event.Object.getAttribute(Tangible) and event.Object.getAttribute(Tangible).hitpoints() == 0:
                     print("An object with 0 hitpoints exists?! delete")
                     self._lowerLayer.send(ReleaseObjectRequest(self.LAYER_NAME,
                                                                        event.Object))
