@@ -197,12 +197,6 @@ class GameConsole(CLIShell):
         self._objectStore = None
         #self._db.execute("PRAGMA synchronous = OFF")
         #self._db.execute("PRAGMA journal_mode = OFF")
-        if loadGame:
-            try:
-                self._loadGame()
-            except Exception as e:
-                print("Could not load game", e)
-                self._game = None
         
         not os.path.exists(self._gamepath) and os.mkdir(self._gamepath)
         not os.path.exists(self._templatesPath) and os.mkdir(self._templatesPath)
@@ -214,6 +208,14 @@ class GameConsole(CLIShell):
             self._playerObjectTypes.read(self._objectTypesFile)
             
         self._initialObjects = configparser.ConfigParser()
+        
+        # Load game last
+        if loadGame:
+            try:
+                self._loadGame()
+            except Exception as e:
+                print("Could not load game", e)
+                self._game = None
         
     def saveGame(self):
         # Two stage save. First, we commit objects to the dabase
