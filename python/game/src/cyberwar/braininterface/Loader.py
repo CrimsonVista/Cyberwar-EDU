@@ -70,7 +70,7 @@ class BrainEnabled(ControlPlaneObjectAttribute):
         env = os.environ.copy()
         env["PYTHONPATH"] = Loader.PYPY_PATH
         print("Seeting PYTHONPATH to ",env["PYTHONPATH"])
-        self._p = subprocess.Popen(args, cwd=os.getcwd(), env=env)
+        self._p = subprocess.Popen(args, cwd=os.getcwd(), env=env, stderr=subprocess.STDOUT, stdout=subprocess.DEVNULL)
         self._pid = self._p.pid
         self.RUNNING_PIDS.add(self)
         

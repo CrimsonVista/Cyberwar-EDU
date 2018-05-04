@@ -137,8 +137,8 @@ class Board(Layer):
                 for row in c.fetchall():
                     objType, objId = row
                     object = self._objectStore.load(objType, objId)
-                    self.raiseEvent(ChangeContentsEvent(i, j, ChangeContentsEvent.INSERT, object))
                     self._inMemoryCache[(i,j)].add(object)
+                    self.raiseEvent(ChangeContentsEvent(i, j, ChangeContentsEvent.INSERT, object))
         return super()._startup(req)
         
     def _getMetadata(self, field, default=None):

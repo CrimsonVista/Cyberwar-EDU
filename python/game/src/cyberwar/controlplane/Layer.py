@@ -191,9 +191,13 @@ class ControlLayer(LayerBase):
     def _handleEvent(self, event):
         if isinstance(event, ChangeContentsEvent):
             if event.Operation == ChangeContentsEvent.INSERT:
+                if event.Object.getAttribute(Tangible) and event.Object.getAttribute(Tangible).hitpoints() == 0:
+                    print("An object with 0 hitpoints exists?! delete")
+                    self._lowerLayer.send(ReleaseObjectRequest(self.LAYER_NAME,
+                                                                       event.Object))
                 
                 # Is this an Observer? If so, track it
-                if self._isObserver(event.Object):
+                elif self._isObserver(event.Object):
                     self._observerTracking.observe(event.Object, (event.X, event.Y))
                 
             elif event.Operation == ChangeContentsEvent.REMOVE:
