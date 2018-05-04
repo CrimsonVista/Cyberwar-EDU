@@ -33,14 +33,13 @@ Loaders = [TerrainLoader, BrainObjectLoader]
 
 AttributeConstructor = {
     
-    "observer": lambda section: Observer(observationRange = section.getint("observer.observation_range")),
-    "mobile"  : lambda section: Mobile(heading=Directions.N, 
-                                       squaresPerSecond = section.getfloat("mobile.squares_per_second"),
-                                       waterAble=section.getint("mobile.water_able")),
-    "tangible": lambda section: Tangible(hp = section.getint("tangible.hp")),
-    "technician":lambda section: Technician(repairAmount = section.getint("technician.repair_amount"),
-                                            repairTime   = section.getint("technician.repair_time")),
-    "botbuilder":lambda section: BotBuilder()
+    "observer": lambda section: lambda observationRange = section.getint("observer.observation_range"): Observer(observationRange=observationRange),
+    "mobile"  : lambda section: lambda squaresPerSecond = section.getfloat("mobile.squares_per_second"), waterAble=section.getint("mobile.water_able"): Mobile(heading=Directions.N, 
+                                       squaresPerSecord=squaresPerSecond,
+                                       waterAble=waterAble),
+    "tangible": lambda section: lambda hp=section.getint("tangible.hp"): Tangible(hp=hp),
+    "technician":lambda section: lambda repairAmount = section.getint("technician.repair_amount"), repairTime = section.getint("technician.repair_time"): Technician(repairAmount=repairAmount, repairTime=repairTime),
+    "botbuilder":lambda section: lambda: BotBuilder()
     }
 
 BRAIN_REQUIRED_FILES = ["translations.py"]
@@ -254,7 +253,7 @@ class GameConsole(CLIShell):
             if not cpObject.getAttribute(BotBuilder): continue
             for objectType in self._playerObjectTypes:
                 if objectType == "city": continue
-                cpObject.getAttribute(BotBuilder).loadDesign(objectType, self._getObjectTypeAttributes(objectType))
+                cpObject.getAttribute(BotBuilder).loadDesign(objectType, self._getObjectTypeAttributes(objectType, build=False))
         
     def _newGame(self, maxX, maxY):
         if self._gameGenerating:
@@ -297,17 +296,22 @@ class GameConsole(CLIShell):
         self.transport.write("Game loaded")"""
         
         
-    def _getObjectTypeAttributes(self, objectType):
+    def _getObjectTypeAttributes(self, objectType, build=True):
         if objectType not in self._playerObjectTypes:
             raise Exception("No such type {}".format(objectType))
         typeSection = self._playerObjectTypes[objectType]
         attributes = []
         if "attributes" in typeSection:
             try:
-                attributes = [AttributeConstructor[attrName](typeSection) for attrName in typeSection["attributes"].split("\n")]
+                if build:
+                    attributes = [AttributeConstructor[attrName](typeSection)() for attrName in typeSection["attributes"].split("\n")]
+                else:
+                    attributes = [AttributeConstructor[attrName](typeSection) for attrName in typeSection["attributes"].split("\n")]
             except Exception as e:
                 raise Exception("Misconfigured type. {}".format(e))
-        
+
+        if not build: return attributes
+                
         for attr in attributes:
             # special handling section
             
@@ -316,7 +320,7 @@ class GameConsole(CLIShell):
                 attr.configureBrainMaker(self._brainMaker)
                 for objectType in self._playerObjectTypes:
                     if objectType == "city": continue
-                    attr.loadDesign(objectType, self._getObjectTypeAttributes(objectType))
+                    attr.loadDesign(objectType, self._getObjectTypeAttributes(objectType, build=False))
         return attributes
     
     def _getBrain(self, brainType, **kargs):
