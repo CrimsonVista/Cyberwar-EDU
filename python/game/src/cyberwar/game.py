@@ -524,7 +524,7 @@ class GameConsole(CLIShell):
         
     def _restartBrainObjectCommand(self, writer, objectId, *restartArgs):
         objectId = int(objectId)
-        gameObject = self._objectStore.getIngameObject(objId)
+        gameObject = self._objectStore.getIngameObject(objectId)
         if not gameObject:
             writer("Unknown object {}\n\n".format(objectId))
             return
