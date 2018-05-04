@@ -27,7 +27,6 @@ from .braininterface.BrainMaker import BrainMaker
 from .braininterface.BotBuilder import BotBuilder
 
 import sqlite3, asyncio, os, configparser, time, shutil
-from src.cyberwar.braininterface.BotBuilder import BotBuilder
 
 Command = CLIShell.CommandHandler
 Loaders = [TerrainLoader, BrainObjectLoader]
