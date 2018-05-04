@@ -27,6 +27,7 @@ from .braininterface.BrainMaker import BrainMaker
 from .braininterface.BotBuilder import BotBuilder
 
 import sqlite3, asyncio, os, configparser, time, shutil
+from src.cyberwar.braininterface.BotBuilder import BotBuilder
 
 Command = CLIShell.CommandHandler
 Loaders = [TerrainLoader, BrainObjectLoader]
@@ -243,7 +244,16 @@ class GameConsole(CLIShell):
                         Board(self._db, store))))
         
         self._game.send(StartGameRequest("game"))
-
+        
+        # Force all bot builders to start with updated designs.
+        # This is a hack. We should figure out something better.
+        # We should have some kind of dynamic reload function
+        for cpObject in self._objectStore:
+            if not isinstance(cpObject, ControlPlaneObject): continue
+            if not cpObject.getAttribute(BotBuilder): continue
+            for objectType in self._playerObjectTypes:
+                if objectType == "city": continue
+                cpObject.getAttribute(BotBuilder).loadDesign(objectType, self._getObjectTypeAttributes(objectType))
         
     def _newGame(self, maxX, maxY):
         if self._gameGenerating:
