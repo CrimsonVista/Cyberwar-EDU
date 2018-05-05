@@ -29,7 +29,7 @@ class BotBuilder(ControlPlaneObjectAttribute):
         if not self._brainMaker:
             raise Exception("No brain maker")
         print("get design", designName)
-        botAttributes = self._designs[designName]
+        botAttributes = [attr() for attr in self._designs[designName]]
         print("Got attributes",[str(a) for a in botAttributes])
         brainPath = self._brainMaker.initializeBrain(name, address, brainZip)
         print("Got brainPath", brainPath)
