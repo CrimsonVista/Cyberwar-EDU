@@ -22,16 +22,16 @@ def kill(pid):
 class BrainEnabled(ControlPlaneObjectAttribute):
     REQUIRED = [Tangible]
     
-    RUNNING_PIDS = set([])
+    RUNNING_PIDS = {}
     LOAD_REQUIRED = []
     
     @classmethod
     def ShutdownAll(cls):
         print("Shutdown all {}".format(cls.RUNNING_PIDS))
-        brains = list(cls.RUNNING_PIDS) # make a copy. stop clears itself from list
+        brains = list(cls.RUNNING_PIDS.keys()) # make a copy. stop clears itself from list
         for brain in brains:
             brain.stop()
-        cls.RUNNING_PIDS = set([])
+        cls.RUNNING_PIDS = {}
             
     
     def __init__(self, directory, brainIdentifier):
@@ -40,7 +40,6 @@ class BrainEnabled(ControlPlaneObjectAttribute):
         self._brainIdentifier = brainIdentifier
         self._p = None
         self._pid = None
-        self._logfile = None
         self._stopped = False
         
         self.start()
@@ -59,6 +58,7 @@ class BrainEnabled(ControlPlaneObjectAttribute):
             raise Exception("Cannot start brain. Pypy path not configured.")
         self._stopped = False
         # Turn on PNetworking
+        print("start pnetworking")
         subprocess.call("pnetworking on", shell=True, cwd=self._directory)
         
         # NOTE ON HEAPSIZE. PyPy currently breaks if heapsize is too small. Even 10m was
@@ -71,10 +71,15 @@ class BrainEnabled(ControlPlaneObjectAttribute):
         env = os.environ.copy()
         env["PYTHONPATH"] = Loader.PYPY_PATH
         #print("Seeting PYTHONPATH to ",env["PYTHONPATH"])
-        self._logfile = open(os.path.join(self._directory, ".stdout_capture.log"),"wb+")
-        self._p = subprocess.Popen(args, cwd=os.getcwd(), env=env, stderr=subprocess.STDOUT, stdout=self._logfile)
+        logfile = open(os.path.join(self._directory, ".stdout_capture.log"),"wb+")
+        self._p = subprocess.Popen(args, cwd=os.getcwd(), env=env, stderr=subprocess.STDOUT, stdout=logfile)
         self._pid = self._p.pid
-        self.RUNNING_PIDS.add(self)
+        if self in BrainEnabled.RUNNING_PIDS:
+            try:
+                BrainEnabled.RUNNING_PIDS[self].close()
+            except:
+                pass
+        BrainEnabled.RUNNING_PIDS[self] = logfile
         
         asyncio.get_event_loop().call_later(HEALTH_CHECK_TIME, self._checkHealth, retryCount+1)
         
@@ -85,7 +90,7 @@ class BrainEnabled(ControlPlaneObjectAttribute):
         # just in case that didn't work. Let's force an os kill
         kill(self._pid)
         try:
-            self._logfile.close()
+            BrainEnabled.RUNNING_PIDS[self].close()
         except:
             pass
         
@@ -93,7 +98,8 @@ class BrainEnabled(ControlPlaneObjectAttribute):
         print("calling pnetworking off in {}".format(self._directory))
         subprocess.call("pnetworking off", shell=True, cwd=self._directory)
         
-        self.RUNNING_PIDS.remove(self)
+        if self in BrainEnabled.RUNNING_PIDS:
+            del BrainEnabled.RUNNING_PIDS[self]
         self._pid = None
         
     def brainRunning(self):

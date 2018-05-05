@@ -19,6 +19,11 @@ class BotBuilder(ControlPlaneObjectAttribute):
         # use ID's rather than objects so that they can be reloaded
         self._builtBotIds = []
         
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["_designs"] = {}
+        return state
+        
     def configureBrainMaker(self, brainMaker):
         self._brainMaker = brainMaker
         
