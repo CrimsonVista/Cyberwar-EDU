@@ -35,7 +35,7 @@ AttributeConstructor = {
     
     "observer": lambda section: lambda observationRange = section.getint("observer.observation_range"): Observer(observationRange=observationRange),
     "mobile"  : lambda section: lambda squaresPerSecond = section.getfloat("mobile.squares_per_second"), waterAble=section.getint("mobile.water_able"): Mobile(heading=Directions.N, 
-                                       squaresPerSecord=squaresPerSecond,
+                                       squaresPerSecond=squaresPerSecond,
                                        waterAble=waterAble),
     "tangible": lambda section: lambda hp=section.getint("tangible.hp"): Tangible(hp=hp),
     "technician":lambda section: lambda repairAmount = section.getint("technician.repair_amount"), repairTime = section.getint("technician.repair_time"): Technician(repairAmount=repairAmount, repairTime=repairTime),
