@@ -29,9 +29,9 @@ class NetworkTranslator:
             if attrName in self.AttributeInterfaces:
                 installInterfaces.append(self.AttributeInterfaces[attrName])
         for interface in installInterfaces:
-            print("loading interface", interface)
+            #print("loading interface", interface)
             for command in interface.COMMANDS:
-                print("\tLoading command",command.CMD)
+                #print("\tLoading command",command.CMD)
                 self._cmds[command.CMD] = command
             for event in interface.EVENTS:
                 self._events[event.EVENT] = event

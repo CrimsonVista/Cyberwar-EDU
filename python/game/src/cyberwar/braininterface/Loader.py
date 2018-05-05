@@ -40,6 +40,7 @@ class BrainEnabled(ControlPlaneObjectAttribute):
         self._brainIdentifier = brainIdentifier
         self._p = None
         self._pid = None
+        self._logfile = None
         self._stopped = False
         
         self.start()
@@ -66,11 +67,12 @@ class BrainEnabled(ControlPlaneObjectAttribute):
         args = ["python", "./brain_interact.py", "--heapsize=32m", "--tmp={}".format(self._directory),
                 "--gameobj={}".format(self._brainIdentifier), 
                 "pypy3-c-sandbox", "-S", "brain.py"]
-        print("Starting",args)
+        #print("Starting",args)
         env = os.environ.copy()
         env["PYTHONPATH"] = Loader.PYPY_PATH
-        print("Seeting PYTHONPATH to ",env["PYTHONPATH"])
-        self._p = subprocess.Popen(args, cwd=os.getcwd(), env=env, stderr=subprocess.STDOUT, stdout=subprocess.DEVNULL)
+        #print("Seeting PYTHONPATH to ",env["PYTHONPATH"])
+        self._logfile = open(os.path.join(self._directory, ".stdout_capture.log"),"wb+")
+        self._p = subprocess.Popen(args, cwd=os.getcwd(), env=env, stderr=subprocess.STDOUT, stdout=self._logfile)
         self._pid = self._p.pid
         self.RUNNING_PIDS.add(self)
         
@@ -82,6 +84,10 @@ class BrainEnabled(ControlPlaneObjectAttribute):
         #self.brainRunning() and self._p.terminate()
         # just in case that didn't work. Let's force an os kill
         kill(self._pid)
+        try:
+            self._logfile.close()
+        except:
+            pass
         
         # shutdown pnetworking
         print("calling pnetworking off in {}".format(self._directory))

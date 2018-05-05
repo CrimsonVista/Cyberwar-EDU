@@ -28,13 +28,13 @@ class BotBuilder(ControlPlaneObjectAttribute):
     def buildBot(self, designName, name, address, brainZip):
         if not self._brainMaker:
             raise Exception("No brain maker")
-        print("get design", designName)
+        #print("get design", designName)
         botAttributes = [attr() for attr in self._designs[designName]]
-        print("Got attributes",[str(a) for a in botAttributes])
+        #print("Got attributes",[str(a) for a in botAttributes])
         brainPath = self._brainMaker.initializeBrain(name, address, brainZip)
-        print("Got brainPath", brainPath)
+        #print("Got brainPath", brainPath)
         brainIdentifier = random.randint(1,2**32)
-        print("Got id", brainIdentifier)
+        #print("Got id", brainIdentifier)
         brainAttr = BrainEnabled(brainPath, brainIdentifier)
         bot = ControlPlaneObject(brainAttr, *botAttributes)
         self._builtBotIds.append(bot.numericIdentifier())
